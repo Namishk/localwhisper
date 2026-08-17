@@ -1,6 +1,0 @@
-{
-  "uuid": "localwhisper-indicator@local",
-  "name": "LocalWhisper Indicator",
-  "description": "Bottom-edge recording and transcription indicator for LocalWhisper.",
-  "shell-version": ["50"]
-}

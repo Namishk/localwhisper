@@ -16,7 +16,7 @@ Android microphone -> local Wi-Fi -> Go receiver -> whisper.cpp/Vulkan -> wl-cop
 Install laptop prerequisites once:
 
 ```sh
-sudo dnf install go git cmake ninja-build gcc-c++ make vulkan-loader-devel shaderc wl-clipboard curl openssl glib2
+sudo dnf install go git cmake ninja-build gcc-c++ make vulkan-loader-devel shaderc wl-clipboard curl openssl glib2 python3-gobject python3-cairo gtk3 gtk-layer-shell
 ```
 
 The receiver uses Go 1.26 or newer. Android users installing the published APK do not need Android Studio or the Android SDK.
@@ -63,21 +63,19 @@ Bind this command to **Ctrl+Space** in Fedora Settings → Keyboard → Keyboard
 
 Press it once to start recording, speak, then press it again to stop. The transcription is copied to the Wayland clipboard; paste it with Ctrl+V.
 
-On GNOME, the optional indicator adds both a persistent top-panel status item and a floating pill at the bottom center of the primary display. Both pulse while recording or transcribing. Install it from the checkout:
+The GTK status overlay displays a transparent animated voice orb at the bottom center of the primary display. Recording uses warm pink, violet, and orange plasma colors; transcription uses blue, cyan, and violet. A green check briefly confirms copied text, while failures and phone disconnections expand into a readable message.
+
+The orb pre-renders its gradient frames once at startup and plays the cached animation at 24 FPS, keeping animation CPU use low and frame pacing even on common 120 Hz and 144 Hz displays. The overlay uses native layer-shell positioning on Hyprland, Sway, and KDE Wayland, with an XWayland fallback on GNOME. It respects GTK's reduced-motion setting.
+
+The desktop installer enables the overlay automatically. To reinstall and restart it after a development change—without logging out—run:
 
 ```sh
-make install-indicator
-```
-
-Log out and back in after the first installation, then enable it:
-
-```sh
-gnome-extensions enable localwhisper-indicator@local
+make install-overlay
 ```
 
 ## Hyprland and Waybar
 
-The receiver, Android app, clipboard, and toggle command work on Hyprland. The GNOME extension is not used there. The desktop installer adds `~/.local/bin/localwhisper-panel-status`, a Waybar custom module that reads only the local receiver status.
+The receiver, Android app, clipboard, toggle command, and GTK overlay work on Hyprland. The desktop installer also adds `~/.local/bin/localwhisper-panel-status`, a Waybar custom module that reads only the local receiver status.
 
 Add `custom/localwhisper` to an existing `modules-right` array in `~/.config/waybar/config.jsonc`, then add this module definition at the top level:
 
@@ -118,7 +116,9 @@ pkill -SIGUSR2 waybar
 
 ```sh
 systemctl --user status localwhisper.service
+systemctl --user status localwhisper-overlay.service
 journalctl --user -u localwhisper.service -f
+journalctl --user -u localwhisper-overlay.service -f
 curl --fail http://127.0.0.1:8766/health
 curl --silent http://127.0.0.1:8766/status
 ```
@@ -174,6 +174,14 @@ The debug APK is `android/app/build/outputs/apk/debug/app-debug.apk`. To build y
 ## Security and scope
 
 The pairing token prevents arbitrary LAN devices from connecting. LocalWhisper does not provide TLS, public-internet access, cloud transcription, or multi-user access control. Use it only on a trusted local network.
+
+## Platform roadmap
+
+Linux is the currently supported desktop platform.
+
+- TODO: Add a macOS desktop client with a LaunchAgent, Metal-enabled `whisper.cpp`, native clipboard integration, and a floating status window.
+- TODO: Add a Windows desktop client with startup registration, Vulkan or CUDA inference, native clipboard integration, and a floating status window.
+- TODO: Package the Go receiver and shared Android protocol with each desktop client while keeping audio and transcription local.
 
 ## License
 
