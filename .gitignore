@@ -1,0 +1,18 @@
+# Local Whisper checkout and downloaded models are large machine-specific assets.
+whisper.cpp/
+
+# Go binaries and Android build products.
+receiver/localwhisper
+receiver/localwhisper-integration
+android/.gradle/
+android/app/build/
+*.apk
+
+# Local Android signing credentials.
+android/signing.properties
+android/*.jks
+android/*.keystore
+
+# Local Python cache and temporary files.
+scripts/__pycache__/
+*.pyc

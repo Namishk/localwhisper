@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+GRADLE_HOME=${LOCALWHISPER_GRADLE_HOME:-/tmp/gradle-8.10.2}
+if [ ! -x "$GRADLE_HOME/bin/gradle" ]; then
+  mkdir -p /tmp
+  curl --fail --location --output /tmp/localwhisper-gradle-8.10.2-bin.zip https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
+  unzip -q /tmp/localwhisper-gradle-8.10.2-bin.zip -d /tmp
+fi
+
+# This Fedora SDK has an incomplete Build Tools 34.0.0 directory. Gradle scans
+# every installed revision and rejects it even though this app pins 35.0.1.
+SDK_ROOT=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
+if [ -n "$SDK_ROOT" ] && [ -d "$SDK_ROOT/build-tools/34.0.0" ] && [ ! -f "$SDK_ROOT/build-tools/34.0.0/aapt2" ]; then
+  SDK_VIEW=/tmp/localwhisper-android-sdk
+  mkdir -p "$SDK_VIEW/build-tools" "$SDK_VIEW/platforms"
+  ln -sfn "$SDK_ROOT/build-tools/35.0.1" "$SDK_VIEW/build-tools/35.0.1"
+  ln -sfn "$SDK_ROOT/platforms/android-35" "$SDK_VIEW/platforms/android-35"
+  ln -sfn "$SDK_ROOT/platform-tools" "$SDK_VIEW/platform-tools"
+  export ANDROID_HOME="$SDK_VIEW"
+  export ANDROID_SDK_ROOT="$SDK_VIEW"
+fi
+exec "$GRADLE_HOME/bin/gradle" -p "$ROOT" "$@"

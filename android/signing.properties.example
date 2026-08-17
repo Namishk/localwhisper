@@ -1,0 +1,5 @@
+# Copy to signing.properties. Keep the real file and keystore private.
+storeFile=localwhisper-release.jks
+storePassword=replace-with-a-long-password
+keyAlias=localwhisper
+keyPassword=replace-with-a-long-password
