@@ -1,4 +1,4 @@
-.PHONY: build test vet run status toggle android release install install-indicator
+.PHONY: build test vet run status toggle android release install install-desktop install-indicator
 
 build:
 	cd receiver && go build -o localwhisper ./cmd/localwhisper && go build -o localwhisper-integration ./cmd/localwhisper-integration
@@ -25,7 +25,10 @@ release:
 	cd android && ./gradlew assembleRelease
 
 install:
-	./scripts/setup-fedora.sh
+	./scripts/install-desktop.sh
+
+install-desktop:
+	./scripts/install-desktop.sh
 
 install-indicator:
 	mkdir -p /tmp/localwhisper-extension

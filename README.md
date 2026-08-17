@@ -28,10 +28,10 @@ Clone this repository and run the installer:
 ```sh
 git clone https://github.com/Namishk/localwhisper.git
 cd localwhisper
-make install
+./scripts/install-desktop.sh
 ```
 
-The installer builds the receiver, clones and builds `whisper.cpp` with Vulkan under `~/.local/share/localwhisper/whisper.cpp`, downloads the default model, creates a random pairing token, installs a user service, and starts it. It does not require root after the prerequisite package installation.
+The desktop installer builds the receiver, clones and builds `whisper.cpp` with Vulkan under `~/.local/share/localwhisper/whisper.cpp`, downloads the default model, creates a random pairing token, installs a user service, and starts it. It does not require root after the prerequisite package installation. `make install` and `make install-desktop` invoke the same script.
 
 It prints the laptop IP and pairing token. Print them again at any time with:
 
@@ -44,7 +44,7 @@ The token is private. The configuration file is mode `0600`; do not commit, shar
 
 ## Install the Android app
 
-Download `localwhisper-android-v1.1.0.apk` from the GitHub release and install it on the phone. Android may ask you to allow installs from the browser or file manager used for the download.
+The mobile setup is only the Android APK: download `localwhisper-android-v1.1.0.apk` from the GitHub release and install it on the phone. Android may ask you to allow installs from the browser or file manager used for the download.
 
 Open **LocalWhisper**, enter:
 
