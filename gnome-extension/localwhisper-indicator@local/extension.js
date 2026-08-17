@@ -5,6 +5,7 @@ import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 const STATES = {
     recording: {symbol: '●', text: 'Recording', color: '#ff6b6b', hideAfterMs: 0},
@@ -13,8 +14,19 @@ const STATES = {
     failed: {symbol: '!', text: 'Transcription failed', color: '#ffd43b', hideAfterMs: 3500},
 };
 
+const READY = {symbol: '●', text: 'Whisper ready', color: '#b0b0b0'};
+
 export default class LocalWhisperIndicatorExtension extends Extension {
     enable() {
+        this._panelIndicator = new PanelMenu.Button(0.0, 'LocalWhisper', true);
+        const panelContent = new St.BoxLayout({style: 'spacing: 6px;'});
+        this._panelSymbol = new St.Label({style: 'font-size: 14px; font-weight: 700;'});
+        this._panelText = new St.Label({style: 'font-size: 12px;'});
+        panelContent.add_child(this._panelSymbol);
+        panelContent.add_child(this._panelText);
+        this._panelIndicator.add_child(panelContent);
+        Main.panel.addToStatusArea('localwhisper-indicator', this._panelIndicator, 0, 'right');
+
         this._anchor = new St.Bin({
             reactive: false,
             xAlign: Clutter.ActorAlign.CENTER,
@@ -47,6 +59,7 @@ export default class LocalWhisperIndicatorExtension extends Extension {
         );
         this._hideTimeout = 0;
         this._pulseTimeout = 0;
+        this._setPanelState(READY);
     }
 
     disable() {
@@ -60,6 +73,8 @@ export default class LocalWhisperIndicatorExtension extends Extension {
         if (this._monitorSignal) {
             Main.layoutManager.disconnect(this._monitorSignal);
         }
+        this._panelIndicator.destroy();
+        this._panelIndicator = null;
         this._anchor.destroy();
         this._anchor = null;
         this._indicator = null;
@@ -70,6 +85,7 @@ export default class LocalWhisperIndicatorExtension extends Extension {
         this._symbol.set_text(state.symbol);
         this._symbol.set_style(`color: ${state.color}; font-size: 18px; font-weight: 700;`);
         this._text.set_text(state.text);
+        this._setPanelState(state);
         if (this._hideTimeout) {
             GLib.source_remove(this._hideTimeout);
             this._hideTimeout = 0;
@@ -105,8 +121,17 @@ export default class LocalWhisperIndicatorExtension extends Extension {
             translation_y: 18,
             duration: 180,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
-            onComplete: () => this._indicator.hide(),
+            onComplete: () => {
+                this._indicator.hide();
+                this._setPanelState(READY);
+            },
         });
+    }
+
+    _setPanelState(state) {
+        this._panelSymbol.set_text(state.symbol);
+        this._panelSymbol.set_style(`color: ${state.color}; font-size: 14px; font-weight: 700;`);
+        this._panelText.set_text(state.text);
     }
 
     _startPulsing() {
@@ -126,7 +151,12 @@ export default class LocalWhisperIndicatorExtension extends Extension {
         }
         GLib.source_remove(this._pulseTimeout);
         this._pulseTimeout = 0;
-        this._symbol.ease({
+        this._resetSymbol(this._symbol);
+        this._resetSymbol(this._panelSymbol);
+    }
+
+    _resetSymbol(symbol) {
+        symbol.ease({
             opacity: 255,
             scale_x: 1,
             scale_y: 1,
@@ -136,13 +166,18 @@ export default class LocalWhisperIndicatorExtension extends Extension {
     }
 
     _pulse() {
-        this._symbol.ease({
+        this._pulseSymbol(this._symbol);
+        this._pulseSymbol(this._panelSymbol);
+    }
+
+    _pulseSymbol(symbol) {
+        symbol.ease({
             opacity: 115,
             scale_x: 1.22,
             scale_y: 1.22,
             duration: 300,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            onComplete: () => this._symbol.ease({
+            onComplete: () => symbol.ease({
                 opacity: 255,
                 scale_x: 1,
                 scale_y: 1,

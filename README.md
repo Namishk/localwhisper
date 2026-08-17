@@ -63,7 +63,7 @@ Bind this command to **Ctrl+Space** in Fedora Settings → Keyboard → Keyboard
 
 Press it once to start recording, speak, then press it again to stop. The transcription is copied to the Wayland clipboard; paste it with Ctrl+V.
 
-The optional GNOME indicator appears at the bottom center of the primary display, slides in while recording/transcribing, and pulses while active. Install it from the checkout:
+On GNOME, the optional indicator adds both a persistent top-panel status item and a floating pill at the bottom center of the primary display. Both pulse while recording or transcribing. Install it from the checkout:
 
 ```sh
 make install-indicator
@@ -73,6 +73,45 @@ Log out and back in after the first installation, then enable it:
 
 ```sh
 gnome-extensions enable localwhisper-indicator@local
+```
+
+## Hyprland and Waybar
+
+The receiver, Android app, clipboard, and toggle command work on Hyprland. The GNOME extension is not used there. The desktop installer adds `~/.local/bin/localwhisper-panel-status`, a Waybar custom module that reads only the local receiver status.
+
+Add `custom/localwhisper` to an existing `modules-right` array in `~/.config/waybar/config.jsonc`, then add this module definition at the top level:
+
+```jsonc
+"modules-right": ["network", "pulseaudio", "custom/localwhisper", "battery"],
+
+"custom/localwhisper": {
+  "exec": "~/.local/bin/localwhisper-panel-status",
+  "return-type": "json",
+  "interval": 1,
+  "format": "{}"
+}
+```
+
+Add these colors to `~/.config/waybar/style.css`:
+
+```css
+#custom-localwhisper.recording { color: #ff6b6b; }
+#custom-localwhisper.transcribing { color: #74c0fc; }
+#custom-localwhisper.ready { color: #69db7c; }
+#custom-localwhisper.disconnected { color: #a0a0a0; }
+```
+
+Bind Ctrl+Space in `~/.config/hypr/hyprland.conf`:
+
+```ini
+bind = CTRL, SPACE, exec, ~/.local/bin/localwhisper-toggle
+```
+
+Reload both after saving:
+
+```sh
+hyprctl reload
+pkill -SIGUSR2 waybar
 ```
 
 ## Service and diagnostics

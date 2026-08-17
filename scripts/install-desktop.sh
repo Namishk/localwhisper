@@ -56,6 +56,7 @@ fi
 install -m 755 "$repo_root/receiver/localwhisper" "$bin_dir/localwhisper"
 install -m 755 "$repo_root/scripts/indicator.py" "$data_dir/indicator.py"
 install -m 755 "$repo_root/scripts/toggle.sh" "$bin_dir/localwhisper-toggle"
+install -m 755 "$repo_root/scripts/panel-status.sh" "$bin_dir/localwhisper-panel-status"
 install -m 644 "$repo_root/systemd/localwhisper.service" "$HOME/.config/systemd/user/localwhisper.service"
 systemctl --user daemon-reload
 systemctl --user enable --now localwhisper.service
