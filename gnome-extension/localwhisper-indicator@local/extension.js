@@ -15,22 +15,21 @@ const STATES = {
 
 export default class LocalWhisperIndicatorExtension extends Extension {
     enable() {
-        this._anchor = new St.Widget({
+        this._anchor = new St.Bin({
             reactive: false,
-            layout_manager: new Clutter.BinLayout(),
+            xAlign: Clutter.ActorAlign.CENTER,
+            yAlign: Clutter.ActorAlign.CENTER,
         });
         this._indicator = new St.BoxLayout({
             reactive: false,
             visible: false,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
             style: 'background-color: rgba(24, 24, 27, 0.96); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; padding: 12px 20px; spacing: 10px;',
         });
         this._symbol = new St.Label({style: 'font-size: 18px; font-weight: 700;'});
         this._text = new St.Label({style: 'color: white; font-size: 16px; font-weight: 600;'});
         this._indicator.add_child(this._symbol);
         this._indicator.add_child(this._text);
-        this._anchor.add_child(this._indicator);
+        this._anchor.set_child(this._indicator);
         Main.layoutManager.addTopChrome(this._anchor);
 
         this._monitorSignal = Main.layoutManager.connect('monitors-changed', () => this._position());
