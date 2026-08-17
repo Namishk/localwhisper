@@ -15,16 +15,23 @@ const STATES = {
 
 export default class LocalWhisperIndicatorExtension extends Extension {
     enable() {
+        this._anchor = new St.Widget({
+            reactive: false,
+            layout_manager: new Clutter.BinLayout(),
+        });
         this._indicator = new St.BoxLayout({
             reactive: false,
             visible: false,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
             style: 'background-color: rgba(24, 24, 27, 0.96); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; padding: 12px 20px; spacing: 10px;',
         });
         this._symbol = new St.Label({style: 'font-size: 18px; font-weight: 700;'});
         this._text = new St.Label({style: 'color: white; font-size: 16px; font-weight: 600;'});
         this._indicator.add_child(this._symbol);
         this._indicator.add_child(this._text);
-        Main.layoutManager.addTopChrome(this._indicator);
+        this._anchor.add_child(this._indicator);
+        Main.layoutManager.addTopChrome(this._anchor);
 
         this._monitorSignal = Main.layoutManager.connect('monitors-changed', () => this._position());
         this._signal = Gio.DBus.session.signal_subscribe(
@@ -54,7 +61,8 @@ export default class LocalWhisperIndicatorExtension extends Extension {
         if (this._monitorSignal) {
             Main.layoutManager.disconnect(this._monitorSignal);
         }
-        this._indicator.destroy();
+        this._anchor.destroy();
+        this._anchor = null;
         this._indicator = null;
     }
 
@@ -147,10 +155,9 @@ export default class LocalWhisperIndicatorExtension extends Extension {
 
     _position() {
         const monitor = Main.layoutManager.primaryMonitor;
-        const [, width] = this._indicator.get_preferred_width(-1);
-        const [, height] = this._indicator.get_preferred_height(width);
-        const x = Math.round(monitor.x + (monitor.width - width) / 2);
+        const [, height] = this._indicator.get_preferred_height(-1);
         const y = monitor.y + monitor.height - height - 24;
-        this._indicator.set_position(x, y);
+        this._anchor.set_position(monitor.x, y);
+        this._anchor.set_size(monitor.width, height);
     }
 }
