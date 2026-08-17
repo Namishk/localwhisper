@@ -1,4 +1,4 @@
-.PHONY: build test vet run status toggle android release install install-desktop install-indicator
+.PHONY: build test vet run status toggle android release install install-desktop install-overlay
 
 build:
 	cd receiver && go build -o localwhisper ./cmd/localwhisper && go build -o localwhisper-integration ./cmd/localwhisper-integration
@@ -30,7 +30,5 @@ install:
 install-desktop:
 	./scripts/install-desktop.sh
 
-install-indicator:
-	mkdir -p /tmp/localwhisper-extension
-	gnome-extensions pack --force --out-dir /tmp/localwhisper-extension gnome-extension/localwhisper-indicator@local
-	gnome-extensions install --force /tmp/localwhisper-extension/localwhisper-indicator@local.shell-extension.zip
+install-overlay:
+	./scripts/install-overlay.sh

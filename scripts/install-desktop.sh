@@ -15,9 +15,10 @@ need_command() {
     fi
 }
 
-for command in go git cmake ninja openssl wl-copy curl gdbus; do
+for command in go git cmake ninja openssl wl-copy curl gdbus python3; do
     need_command "$command"
 done
+python3 -c "import cairo, gi; gi.require_version('Gtk', '3.0'); gi.require_version('GtkLayerShell', '0.1')"
 
 mkdir -p "$data_dir" "$config_dir" "$bin_dir" "$HOME/.config/systemd/user"
 
@@ -58,8 +59,16 @@ install -m 755 "$repo_root/scripts/indicator.py" "$data_dir/indicator.py"
 install -m 755 "$repo_root/scripts/toggle.sh" "$bin_dir/localwhisper-toggle"
 install -m 755 "$repo_root/scripts/panel-status.sh" "$bin_dir/localwhisper-panel-status"
 install -m 644 "$repo_root/systemd/localwhisper.service" "$HOME/.config/systemd/user/localwhisper.service"
+install -m 644 "$repo_root/systemd/localwhisper-overlay.service" "$HOME/.config/systemd/user/localwhisper-overlay.service"
 systemctl --user daemon-reload
 systemctl --user enable --now localwhisper.service
+systemctl --user enable localwhisper-overlay.service
+systemctl --user restart localwhisper-overlay.service
+
+if command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions info localwhisper-indicator@local >/dev/null 2>&1; then
+    gnome-extensions disable localwhisper-indicator@local 2>/dev/null || true
+    gnome-extensions uninstall localwhisper-indicator@local 2>/dev/null || true
+fi
 
 printf '\nLocalWhisper desktop is ready. Laptop IP: '
 hostname -I | awk '{print $1}'
