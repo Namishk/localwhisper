@@ -44,19 +44,21 @@ The token is private. The configuration file is mode `0600`; do not commit, shar
 
 ## Install on Windows
 
-On Windows the receiver copies the transcription to the clipboard via `clip.exe`, and a Go/Ebiten status pill overlay (transparent, click-through, bottom-center) mirrors the GTK overlay from Fedora. You need Windows 10 or 11 with a Vulkan-capable GPU, plus [Go](https://go.dev/dl/), [Git](https://git-scm.com/download/win), [CMake](https://cmake.org/download/), the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (provides `glslc` for building whisper.cpp shaders), and Visual Studio Build Tools (C++ workload) on PATH.
+On Windows the receiver copies the transcription to the clipboard via `clip.exe`, and a Go/Ebiten status pill overlay (transparent, click-through, bottom-center) mirrors the GTK overlay from Fedora. A Vulkan-capable GPU is required.
 
-Clone this repository and run the installer in PowerShell:
+Run this in PowerShell; nothing else needs to be installed first. The installer downloads the source, installs missing dependencies through winget, prefers prebuilt binaries from the latest GitHub release, builds whisper.cpp with Vulkan, downloads the model, and registers an autostart task:
 
 ```powershell
-git clone https://github.com/Namishk/localwhisper.git
-cd localwhisper
-powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1
+irm https://raw.githubusercontent.com/Namishk/localwhisper/main/scripts/install-windows.ps1 -OutFile "$env:TEMP\install-localwhisper.ps1"
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-localwhisper.ps1"
 ```
 
-The installer builds the receiver and the status overlay (`localwhisper-overlay.exe`, rendered with Ebiten), clones and builds `whisper.cpp` with Vulkan under `%LOCALAPPDATA%\localwhisper\whisper.cpp`, downloads the default model, creates a random pairing token in `%LOCALAPPDATA%\localwhisper\receiver.env`, and registers a logon scheduled task that starts both the overlay and the receiver. Pass `-NoAutostart` to skip the scheduled task.
+Notes:
 
-If you already installed an earlier build, delete `%LOCALAPPDATA%\localwhisper\receiver.env` so the installer recreates it with the `LOCALWHISPER_INDICATOR` entry the receiver needs to drive the overlay, then rerun the installer.
+- Prebuilt `localwhisper.exe` and `localwhisper-overlay.exe` come from the GitHub release, so Go is only installed if you pass `-BuildFromSource`.
+- Building whisper.cpp still happens on your machine. That pulls in Visual Studio Build Tools, CMake, and the Vulkan SDK automatically via winget when missing (several GB of installs on a clean system).
+- Pass `-NoAutostart` to skip the logon scheduled task.
+- If you already installed an earlier build, delete `%LOCALAPPDATA%\localwhisper\receiver.env` so the installer recreates it with the `LOCALWHISPER_INDICATOR` entry the receiver needs to drive the overlay, then rerun the installer.
 
 It prints the laptop IP and pairing token. Print them again at any time with:
 
@@ -68,7 +70,7 @@ Select-String -Path "$env:LOCALAPPDATA\localwhisper\receiver.env" -Pattern 'LOCA
 Bind **Ctrl+Space** (Settings > Accessibility > Keyboard, or AutoHotkey) to:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File <repo>\scripts\toggle-windows.ps1
+powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\localwhisper\toggle-localwhisper.ps1"
 ```
 
 ## Install the Android app
