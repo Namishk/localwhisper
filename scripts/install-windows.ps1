@@ -14,6 +14,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if ($Repo -notmatch '^[\w.-]+/[\w.-]+$') {
+    Write-Error "-Repo must look like owner/name, got '$Repo'."
+}
+
 $dataDir = Join-Path $env:LOCALAPPDATA 'localwhisper'
 $srcDir = Join-Path $dataDir 'src'
 $modelName = 'large-v3-turbo-q5_0'
@@ -56,18 +60,29 @@ then rerun this script.
 
 function Install-WingetPackage([string]$id, [string]$override = '') {
     Write-Host "Installing $id via winget..."
-    $args = @('install', '--id', $id, '--exact', '--silent',
+    # --source winget: without it winget may search only msstore, which does not
+    # carry these packages and fails with "No package found matching input criteria".
+    $wingetArgs = @('install', '--id', $id, '--exact', '--source', 'winget', '--silent',
         '--accept-package-agreements', '--accept-source-agreements')
-    if ($override) { $args += @('--override', $override) }
-    winget @args
+    if ($override) { $wingetArgs += @('--override', $override) }
+    winget @wingetArgs
     if ($LASTEXITCODE -notin 0, 0x8A15002B) { # 0x8A15002B: already installed
-        # Some installers report nonzero for no-op runs; only hard-fail when
-        # the tool is still missing afterwards.
-        Write-Host "winget returned $LASTEXITCODE for $id; continuing."
+        # Some installers report nonzero for no-op runs; callers verify the tool
+        # is actually present afterwards.
+        Write-Host "winget returned $LASTEXITCODE for $id."
     }
-    # Pick up PATH changes made by the installer.
+    Update-EnvironmentFromRegistry
+}
+
+# Installers set machine-wide variables (PATH, VULKAN_SDK) that this already
+# running process does not see, so pull them back in after each install.
+function Update-EnvironmentFromRegistry {
     $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
         [Environment]::GetEnvironmentVariable('Path', 'User')
+    foreach ($name in 'VULKAN_SDK', 'VK_SDK_PATH') {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Machine')
+        if ($value) { Set-Item -Path "env:$name" -Value $value }
+    }
 }
 
 function Test-VsCppToolchain {
@@ -80,14 +95,32 @@ function Test-VsCppToolchain {
 Ensure-Winget
 
 Write-Step 'Checking dependencies'
+# A previous run may have installed tools this session cannot see yet.
+Update-EnvironmentFromRegistry
 if (-not (Test-VsCppToolchain)) {
     Install-WingetPackage 'Microsoft.VisualStudio.2022BuildTools' `
         '--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'
+    # Stop here rather than letting CMake fall back to a generator with no
+    # compiler and fail several minutes later with an unrelated message.
+    if (-not (Test-VsCppToolchain)) {
+        Write-Error @'
+The Visual Studio C++ build tools are still missing after the winget install.
+Install them manually, then rerun this script:
+
+  https://visualstudio.microsoft.com/downloads/  ("Build Tools for Visual Studio")
+  Select the "Desktop development with C++" workload.
+'@
+    }
 }
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Install-WingetPackage 'Git.Git' }
 if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { Install-WingetPackage 'Kitware.CMake' }
 if (-not (Get-Command glslc -ErrorAction SilentlyContinue)) {
     Install-WingetPackage 'KhronosGroup.VulkanSDK'
+}
+foreach ($tool in 'git', 'cmake', 'glslc') {
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+        Write-Error "$tool is still missing after the winget install. Install it manually and rerun this script."
+    }
 }
 
 # --- receiver and overlay binaries -------------------------------------------
@@ -132,10 +165,21 @@ if (-not (Test-Path (Join-Path $whisperDir '.git'))) {
     git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git $whisperDir
 }
 $whisperCli = Join-Path $whisperDir 'build\bin\Release\whisper-cli.exe'
+$whisperBuild = Join-Path $whisperDir 'build'
+$generator = 'Visual Studio 17 2022'
 if (-not (Test-Path $whisperCli)) {
-    cmake -S $whisperDir -B (Join-Path $whisperDir 'build') -DGGML_VULKAN=ON
+    # A cache from a failed earlier run pins a different generator, and CMake
+    # refuses to reconfigure over it. Discard it.
+    $cache = Join-Path $whisperBuild 'CMakeCache.txt'
+    if ((Test-Path $cache) -and -not (Select-String -Path $cache -SimpleMatch "CMAKE_GENERATOR:INTERNAL=$generator" -Quiet)) {
+        Write-Host 'Discarding an incompatible CMake cache from an earlier run.'
+        Remove-Item $whisperBuild -Recurse -Force
+    }
+    # Name the generator explicitly. CMake's default outside a developer prompt
+    # is NMake Makefiles, which has no compiler configured.
+    cmake -S $whisperDir -B $whisperBuild -G $generator -A x64 -DGGML_VULKAN=ON
     if ($LASTEXITCODE -ne 0) { Write-Error 'cmake configure failed' }
-    cmake --build (Join-Path $whisperDir 'build') --config Release
+    cmake --build $whisperBuild --config Release
     if ($LASTEXITCODE -ne 0) { Write-Error 'whisper.cpp build failed' }
 }
 
