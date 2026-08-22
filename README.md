@@ -42,6 +42,33 @@ sed -n 's/^LOCALWHISPER_TOKEN=//p' ~/.config/localwhisper/receiver.env
 
 The token is private. The configuration file is mode `0600`; do not commit, share, or screenshot it.
 
+## Install on Windows
+
+Windows support has no status overlay; the transcription lands on the clipboard via `clip.exe`. You need Windows 10 or 11 with a Vulkan-capable GPU, plus [Go](https://go.dev/dl/), [Git](https://git-scm.com/download/win), [CMake](https://cmake.org/download/), and Visual Studio Build Tools (C++ workload) on PATH.
+
+Clone this repository and run the installer in PowerShell:
+
+```powershell
+git clone https://github.com/Namishk/localwhisper.git
+cd localwhisper
+powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1
+```
+
+The installer builds the receiver, clones and builds `whisper.cpp` with Vulkan under `%LOCALAPPDATA%\localwhisper\whisper.cpp`, downloads the default model, creates a random pairing token in `%LOCALAPPDATA%\localwhisper\receiver.env`, and registers a logon scheduled task that starts the receiver. Pass `-NoAutostart` to skip the scheduled task.
+
+It prints the laptop IP and pairing token. Print them again at any time with:
+
+```powershell
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' } | Select-Object -First 1).IPAddress
+Select-String -Path "$env:LOCALAPPDATA\localwhisper\receiver.env" -Pattern 'LOCALWHISPER_TOKEN=(.+)'
+```
+
+Bind **Ctrl+Space** (Settings > Accessibility > Keyboard, or AutoHotkey) to:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File <repo>\scripts\toggle-windows.ps1
+```
+
 ## Install the Android app
 
 The mobile setup is only the Android APK: download `localwhisper-android-v1.1.0.apk` from the GitHub release and install it on the phone. Android may ask you to allow installs from the browser or file manager used for the download.

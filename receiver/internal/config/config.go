@@ -8,8 +8,6 @@ import (
 	"strconv"
 )
 
-const projectRoot = "."
-
 type Config struct {
 	WhisperBin     string
 	WhisperModel   string
@@ -23,15 +21,20 @@ type Config struct {
 
 func Load() (Config, error) {
 	root := checkoutRoot()
-	c := Config{
-		WhisperBin:     env("WHISPER_BIN", filepath.Join(root, "whisper.cpp/build/bin/whisper-cli")),
-		WhisperModel:   env("WHISPER_MODEL", filepath.Join(root, "whisper.cpp/models/ggml-large-v3-turbo-q5_0.bin")),
-		WhisperThreads: 8,
-		IndicatorBin:   env("LOCALWHISPER_INDICATOR", filepath.Join(projectRoot, "scripts/indicator.py")),
-		WSAddr:         env("WS_ADDR", ":8765"),
-		ControlAddr:    env("CONTROL_ADDR", "127.0.0.1:8766"),
-		Token:          os.Getenv("LOCALWHISPER_TOKEN"),
-		WAVPath:        env("LOCALWHISPER_WAV", "/tmp/localwhisper/latest.wav"),
+	c := platformDefaults(root)
+	c.WhisperModel = env("WHISPER_MODEL", filepath.Join(root, "whisper.cpp/models/ggml-large-v3-turbo-q5_0.bin"))
+	c.WhisperThreads = 8
+	c.WSAddr = env("WS_ADDR", ":8765")
+	c.ControlAddr = env("CONTROL_ADDR", "127.0.0.1:8766")
+	c.Token = os.Getenv("LOCALWHISPER_TOKEN")
+	if value := os.Getenv("WHISPER_BIN"); value != "" {
+		c.WhisperBin = value
+	}
+	if value := os.Getenv("LOCALWHISPER_INDICATOR"); value != "" {
+		c.IndicatorBin = value
+	}
+	if value := os.Getenv("LOCALWHISPER_WAV"); value != "" {
+		c.WAVPath = value
 	}
 	if value := os.Getenv("WHISPER_THREADS"); value != "" {
 		threads, err := strconv.Atoi(value)
@@ -63,7 +66,7 @@ func checkoutRoot() string {
 			return root
 		}
 	}
-	return projectRoot
+	return "."
 }
 
 func findRoot(start string) (string, bool) {

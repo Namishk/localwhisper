@@ -18,16 +18,16 @@ import (
 )
 
 type Server struct {
-	config   config.Config
-	log      *slog.Logger
-	runner   transcribe.Runner
-	mu       sync.Mutex
-	machine  state.Machine
-	phone    *phone
-	device   string
-	pcm      []byte
-	stopSent bool
-	copy     func(string) error
+	config    config.Config
+	log       *slog.Logger
+	runner    transcribe.Runner
+	mu        sync.Mutex
+	machine   state.Machine
+	phone     *phone
+	device    string
+	pcm       []byte
+	stopSent  bool
+	copy      func(string) error
 	indicator func(string)
 }
 
@@ -254,8 +254,10 @@ func (s *Server) transcribe(pcm []byte) {
 	s.indicator("copied")
 }
 
-func copyClipboard(text string) error { return exec.Command("wl-copy", text).Run() }
 func newIndicator(binary string, log *slog.Logger) func(string) {
+	if binary == "" {
+		return func(string) {}
+	}
 	return func(state string) {
 		if err := exec.Command(binary, "set", state).Run(); err != nil {
 			log.Debug("update indicator", "error", err)
