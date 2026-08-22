@@ -114,9 +114,15 @@ func (s *Server) disconnect(p *phone) {
 	if s.phone == p {
 		s.phone, s.device = nil, ""
 	}
+	// If the phone drops before it confirms the stop, no stopped message will
+	// ever arrive; transcribe what we have so the session cannot stay stuck.
+	waitingForStopped := s.machine.Phase() == state.Transcribing && s.stopSent
 	s.mu.Unlock()
 	p.conn.Close()
 	s.log.Info("phone disconnected")
+	if waitingForStopped {
+		s.transcribeNowAfterStopFailure()
+	}
 }
 
 func (s *Server) ControlHandler() http.Handler {
