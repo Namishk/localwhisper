@@ -15,6 +15,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
+      # Ebiten (the overlay) links against X11/GL through cgo on Linux.
+      - run: sudo apt-get update && sudo apt-get install -y libx11-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libxxf86vm-dev libgl1-mesa-dev
+        working-directory: .
       - run: go test ./...
       - run: go vet ./...
       - run: go build ./cmd/localwhisper

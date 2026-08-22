@@ -13,17 +13,26 @@ Android microphone -> local Wi-Fi -> Go receiver -> whisper.cpp/Vulkan -> wl-cop
 - Both devices on the same trusted Wi-Fi network.
 - About 2 GB of free disk space: the default `large-v3-turbo-q5_0` model is about 547 MiB.
 
-Install laptop prerequisites once:
+The receiver uses Go 1.26 or newer. Android users installing the published APK do not need Android Studio or the Android SDK.
+
+## Install on Fedora
+
+Nothing needs to be installed first. Run:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Namishk/localwhisper/main/scripts/install-desktop.sh -o /tmp/install-localwhisper.sh
+sh /tmp/install-localwhisper.sh
+```
+
+The installer checks its prerequisites and, on Fedora, installs the missing ones with `sudo dnf` (this is the only step that needs root). It then downloads the source into `~/.local/share/localwhisper/src`, builds the receiver, clones and builds `whisper.cpp` with Vulkan under `~/.local/share/localwhisper/whisper.cpp`, downloads the default model, creates a random pairing token, installs a user service, and starts it.
+
+On other distributions install the equivalents of these packages yourself, then rerun the script:
 
 ```sh
 sudo dnf install go git cmake ninja-build gcc-c++ make vulkan-loader-devel shaderc wl-clipboard curl openssl glib2 python3-gobject python3-cairo gtk3 gtk-layer-shell
 ```
 
-The receiver uses Go 1.26 or newer. Android users installing the published APK do not need Android Studio or the Android SDK.
-
-## Install on Fedora
-
-Clone this repository and run the installer:
+From a checkout the same installer runs against the local source instead of downloading it:
 
 ```sh
 git clone https://github.com/Namishk/localwhisper.git
@@ -31,7 +40,7 @@ cd localwhisper
 ./scripts/install-desktop.sh
 ```
 
-The desktop installer builds the receiver, clones and builds `whisper.cpp` with Vulkan under `~/.local/share/localwhisper/whisper.cpp`, downloads the default model, creates a random pairing token, installs a user service, and starts it. It does not require root after the prerequisite package installation. `make install` and `make install-desktop` invoke the same script.
+`make install` and `make install-desktop` invoke the same script. Rerun it any time to upgrade; it rebuilds the receiver and keeps the existing `receiver.env`.
 
 It prints the laptop IP and pairing token. Print them again at any time with:
 
@@ -75,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\localwhisper\toggle-
 
 ## Install the Android app
 
-The mobile setup is only the Android APK: download `localwhisper-android-v1.1.0.apk` from the GitHub release and install it on the phone. Android may ask you to allow installs from the browser or file manager used for the download.
+The mobile setup is only the Android APK: download `localwhisper-android-v1.3.0.apk` from the GitHub release and install it on the phone. Android may ask you to allow installs from the browser or file manager used for the download.
 
 Open **LocalWhisper**, enter:
 
@@ -208,11 +217,9 @@ The pairing token prevents arbitrary LAN devices from connecting. LocalWhisper d
 
 ## Platform roadmap
 
-Linux is the currently supported desktop platform.
+Linux and Windows are supported.
 
 - TODO: Add a macOS desktop client with a LaunchAgent, Metal-enabled `whisper.cpp`, native clipboard integration, and a floating status window.
-- TODO: Add a Windows desktop client with startup registration, Vulkan or CUDA inference, native clipboard integration, and a floating status window.
-- TODO: Package the Go receiver and shared Android protocol with each desktop client while keeping audio and transcription local.
 
 ## License
 

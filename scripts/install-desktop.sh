@@ -7,24 +7,51 @@ config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/localwhisper"
 bin_dir="$HOME/.local/bin"
 model_name="large-v3-turbo-q5_0"
 whisper_dir="$data_dir/whisper.cpp"
+src_dir="$data_dir/src"
+repo_url="${LOCALWHISPER_REPO:-https://github.com/Namishk/localwhisper.git}"
 
-need_command() {
-    if ! command -v "$1" >/dev/null 2>&1; then
-        printf 'Missing required command: %s\n' "$1" >&2
-        exit 1
-    fi
+# Fedora packages providing the commands and Python modules this installer needs.
+fedora_packages="go git cmake ninja-build gcc-c++ make vulkan-loader-devel shaderc wl-clipboard curl openssl glib2 python3-gobject python3-cairo gtk3 gtk-layer-shell"
+
+have_prerequisites() {
+    for command in go git cmake ninja openssl wl-copy curl gdbus python3; do
+        command -v "$command" >/dev/null 2>&1 || return 1
+    done
+    python3 -c "import cairo, gi; gi.require_version('Gtk', '3.0'); gi.require_version('GtkLayerShell', '0.1')" \
+        >/dev/null 2>&1 || return 1
 }
 
-for command in go git cmake ninja openssl wl-copy curl gdbus python3; do
-    need_command "$command"
-done
-python3 -c "import cairo, gi; gi.require_version('Gtk', '3.0'); gi.require_version('GtkLayerShell', '0.1')"
+# Install prerequisites on Fedora. Other distributions must install the
+# equivalents themselves; we only report what is missing.
+if ! have_prerequisites; then
+    if command -v dnf >/dev/null 2>&1; then
+        printf 'Installing Fedora prerequisites (sudo required)...\n'
+        # shellcheck disable=SC2086
+        sudo dnf install -y $fedora_packages
+    fi
+    if ! have_prerequisites; then
+        printf 'Missing prerequisites. Install the equivalents of: %s\n' "$fedora_packages" >&2
+        exit 1
+    fi
+fi
+
+# The script can be curled and run on its own; fetch the source when it is not
+# sitting inside a checkout.
+if [ ! -f "$repo_root/receiver/go.mod" ]; then
+    printf 'Downloading source from %s\n' "$repo_url"
+    if [ -d "$src_dir/.git" ]; then
+        git -C "$src_dir" pull --ff-only
+    else
+        mkdir -p "$data_dir"
+        rm -rf "$src_dir"
+        git clone --depth 1 "$repo_url" "$src_dir"
+    fi
+    repo_root="$src_dir"
+fi
 
 mkdir -p "$data_dir" "$config_dir" "$bin_dir" "$HOME/.config/systemd/user"
 
-if [ ! -x "$repo_root/receiver/localwhisper" ]; then
-    (cd "$repo_root/receiver" && go build -o localwhisper ./cmd/localwhisper)
-fi
+(cd "$repo_root/receiver" && go build -o localwhisper ./cmd/localwhisper)
 
 if [ ! -d "$whisper_dir/.git" ]; then
     git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git "$whisper_dir"

@@ -25,27 +25,38 @@ android {
         applicationId = "dev.localwhisper"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.1.0"
+        versionCode = 7
+        versionName = "1.3.0"
     }
 
+    // The release signing config only exists when signing.properties is present,
+    // so debug builds and CI work from a clean checkout. Release builds without
+    // it fail in the guard below this block.
     signingConfigs {
-        create("release") {
-            val storeFilePath = signingProperties.getProperty("storeFile")
-                ?: error("Create android/signing.properties from signing.properties.example before building a release APK")
-            storeFile = rootProject.file(storeFilePath)
-            storePassword = signingProperties.getProperty("storePassword")
-            keyAlias = signingProperties.getProperty("keyAlias")
-            keyPassword = signingProperties.getProperty("keyPassword")
+        if (signingPropertiesFile.isFile) {
+            create("release") {
+                storeFile = rootProject.file(signingProperties.getProperty("storeFile"))
+                storePassword = signingProperties.getProperty("storePassword")
+                keyAlias = signingProperties.getProperty("keyAlias")
+                keyPassword = signingProperties.getProperty("keyPassword")
+            }
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
+}
+
+// Fail a release build clearly rather than emitting an unsigned APK. Debug
+// builds and CI never need signing.properties.
+if (!signingPropertiesFile.isFile &&
+    gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = false) }
+) {
+    error("Create android/signing.properties from signing.properties.example before building a release APK")
 }
 
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_1_8) } }
