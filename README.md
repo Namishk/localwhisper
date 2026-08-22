@@ -63,9 +63,9 @@ Bind this command to **Ctrl+Space** in Fedora Settings → Keyboard → Keyboard
 
 Press it once to start recording, speak, then press it again to stop. The transcription is copied to the Wayland clipboard; paste it with Ctrl+V.
 
-The GTK status overlay displays a transparent animated voice orb at the bottom center of the primary display. Recording uses warm pink, violet, and orange plasma colors; transcription uses blue, cyan, and violet. A green check briefly confirms copied text, while failures and phone disconnections expand into a readable message.
+The GTK status overlay displays a transparent status glyph at the bottom center of the primary display. Recording shows a microphone with radiating sound waves in warm pink; transcription shows animated equalizer bars in blue, cyan, and violet. A green circled check briefly confirms copied text, while failures and phone disconnections expand into a readable message beside an amber alert badge.
 
-The orb pre-renders its gradient frames once at startup and plays the cached animation at 24 FPS, keeping animation CPU use low and frame pacing even on common 120 Hz and 144 Hz displays. The overlay uses native layer-shell positioning on Hyprland, Sway, and KDE Wayland, with an XWayland fallback on GNOME. It respects GTK's reduced-motion setting.
+The animated glyphs pre-render their frames once at startup and play the cached animation at 24 FPS, keeping animation CPU use low and frame pacing even on common 120 Hz and 144 Hz displays. The overlay uses native layer-shell positioning on Hyprland, Sway, and KDE Wayland, with an XWayland fallback on GNOME. It respects GTK's reduced-motion setting.
 
 The desktop installer enables the overlay automatically. To reinstall and restart it after a development change—without logging out—run:
 

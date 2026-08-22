@@ -35,17 +35,43 @@ STATES = {
 }
 
 
+def ease_out_cubic(progress):
+    return 1 - (1 - progress) ** 3
+
+
+def ease_out_back(progress, overshoot=1.70158):
+    p = progress - 1
+    return max(0.01, 1 + (overshoot + 1) * p**3 + overshoot * p**2)
+
+
 class StatusGlyph(Gtk.DrawingArea):
-    FRAME_COUNT = 24
+    FRAME_COUNT = 36
+    WIDTH = 52
+    HEIGHT = 44
+    BADGE_POP_SECONDS = 0.28
+
+    MIC_COLOR = (1, 0.42, 0.42)
+    RIPPLE_COLOR = (1, 0.42, 0.42)
+    BAR_COLOR = (0.455, 0.753, 0.988)
+    BARS = (
+        (-10.5, 5.1, 0.62),
+        (-3.5, 1.7, 1.0),
+        (3.5, 3.4, 0.92),
+        (10.5, 0.4, 0.58),
+    )
+    COPIED_COLOR = (0.41, 0.86, 0.49)
+    ALERT_COLOR = (1, 0.83, 0.23)
 
     def __init__(self):
         super().__init__()
         self.state = "recording"
         self.color = "#ff6b6b"
         self.phase = 0
-        self.set_size_request(52, 44)
-        self.orb_frames = {
-            state: self._render_orb_frames(state) for state in ("recording", "transcribing")
+        self.badge_timeout = 0
+        self.badge_started = 0.0
+        self.set_size_request(self.WIDTH, self.HEIGHT)
+        self.frames = {
+            state: self._render_frames(state) for state in ("recording", "transcribing")
         }
         self.connect("draw", self._draw)
 
@@ -53,87 +79,162 @@ class StatusGlyph(Gtk.DrawingArea):
         self.state = state
         self.color = color
         self.phase = phase
+        if self.badge_timeout:
+            GLib.source_remove(self.badge_timeout)
+            self.badge_timeout = 0
+        if state not in ("recording", "transcribing"):
+            self.badge_started = time.monotonic()
+            self.badge_timeout = GLib.timeout_add(16, self._badge_frame)
         self.queue_draw()
 
-    def _draw(self, _widget, context):
-        width = self.get_allocated_width()
-        height = self.get_allocated_height()
-        center_x = width / 2
-        center_y = height / 2
-        context.set_source_rgba(*color_components(self.color))
-        context.set_line_cap(1)
+    def _badge_frame(self):
+        if time.monotonic() - self.badge_started >= self.BADGE_POP_SECONDS:
+            self.badge_timeout = 0
+        self.queue_draw()
+        return GLib.SOURCE_CONTINUE if self.badge_timeout else GLib.SOURCE_REMOVE
 
+    def _draw(self, _widget, context):
         if self.state in ("recording", "transcribing"):
             frame_index = round(self.phase / math.tau * self.FRAME_COUNT) % self.FRAME_COUNT
-            context.set_source_surface(self.orb_frames[self.state][frame_index], 0, 0)
+            context.set_source_surface(self.frames[self.state][frame_index], 0, 0)
             context.paint()
             return False
-
-        if self.state == "copied":
-            context.set_line_width(4)
-            context.move_to(center_x - 11, center_y)
-            context.line_to(center_x - 3, center_y + 8)
-            context.line_to(center_x + 12, center_y - 9)
-            context.stroke()
-            return False
-
-        context.set_line_width(3)
-        context.arc(center_x, center_y, 12, 0, math.tau)
-        context.stroke()
-        context.set_line_width(3)
-        context.move_to(center_x, center_y - 7)
-        context.line_to(center_x, center_y + 2)
-        context.stroke()
-        context.arc(center_x, center_y + 7, 1.5, 0, math.tau)
-        context.fill()
+        progress = 1
+        if self.badge_timeout:
+            progress = min(1, (time.monotonic() - self.badge_started) / self.BADGE_POP_SECONDS)
+        glyphs = {
+            "copied": (self._draw_check, self.COPIED_COLOR, True),
+            "failed": (self._draw_alert, self.ALERT_COLOR, True),
+            "disconnected": (self._draw_phone_off, self.ALERT_COLOR, False),
+        }
+        glyph, color, ring = glyphs.get(self.state, glyphs["failed"])
+        self._draw_badge(context, color, glyph, progress, ring)
         return False
 
-    def _render_orb_frames(self, state):
+    def _render_frames(self, state):
         frames = []
         for frame_index in range(self.FRAME_COUNT):
-            surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 52, 44)
+            surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.WIDTH, self.HEIGHT)
             context = cairo.Context(surface)
-            phase = frame_index * math.tau / self.FRAME_COUNT
-            self._draw_orb(context, 26, 22, state, phase)
+            phase = frame_index / self.FRAME_COUNT
+            if state == "recording":
+                self._draw_recording(context, self.WIDTH / 2, self.HEIGHT / 2, phase)
+            else:
+                self._draw_transcribing(context, self.WIDTH / 2, self.HEIGHT / 2, phase)
             frames.append(surface)
         return frames
 
-    def _draw_orb(self, context, center_x, center_y, state, phase):
-        if state == "recording":
-            palette = ((1, 0.2, 0.46), (0.72, 0.24, 1), (1, 0.5, 0.16))
-        else:
-            palette = ((0.12, 0.7, 1), (0.38, 0.28, 1), (0.15, 1, 0.78))
+    def _draw_recording(self, context, cx, cy, phase):
+        for index in range(2):
+            travel = (phase + index * 0.5) % 1
+            context.set_source_rgba(*self.RIPPLE_COLOR, 0.5 * (1 - travel) ** 1.6)
+            context.set_line_width(2)
+            context.new_sub_path()
+            context.arc(cx, cy - 2, 13 + travel * 9, 0, math.tau)
+            context.stroke()
 
-        halo = cairo.RadialGradient(center_x, center_y, 10, center_x, center_y, 23)
-        halo.add_color_stop_rgba(0, *palette[1], 0.22)
-        halo.add_color_stop_rgba(0.72, *palette[0], 0.12)
-        halo.add_color_stop_rgba(1, *palette[0], 0)
-        context.set_source(halo)
-        context.arc(center_x, center_y, 23, 0, math.tau)
-        context.fill()
-
+        breath = 1 + 0.045 * math.sin(math.tau * phase)
         context.save()
-        context.arc(center_x, center_y, 19, 0, math.tau)
-        context.clip()
-        context.set_operator(cairo.OPERATOR_ADD)
-        for index, color in enumerate(palette):
-            direction = -1 if index == 1 else 1
-            angle = direction * phase * (0.48 + index * 0.13) + index * 2.05
-            radius = 6 + index
-            blob_x = center_x + math.cos(angle) * radius
-            blob_y = center_y + math.sin(angle * 1.17) * radius
-            blob = cairo.RadialGradient(blob_x, blob_y, 1, blob_x, blob_y, 18)
-            blob.add_color_stop_rgba(0, *color, 0.88)
-            blob.add_color_stop_rgba(0.5, *color, 0.42)
-            blob.add_color_stop_rgba(1, *color, 0)
-            context.set_source(blob)
-            context.paint()
+        context.translate(cx, cy)
+        context.scale(breath, breath)
+        context.translate(-cx, -cy)
+        self._draw_mic(context, cx, cy)
         context.restore()
 
-        context.set_source_rgba(1, 1, 1, 0.24)
-        context.set_line_width(1.2)
-        context.arc(center_x, center_y, 19, 0, math.tau)
+    def _draw_mic(self, context, cx, cy):
+        cradle_y = cy - 2
+        context.set_source_rgba(*self.MIC_COLOR, 0.95)
+        context.set_line_width(3)
+        self._rounded_rect(context, cx - 4.5, cy - 12, cx + 4.5, cy, 4.5)
+        context.fill()
+        context.new_sub_path()
+        context.arc(cx, cradle_y, 8, -0.55, math.pi + 0.55)
         context.stroke()
+        context.move_to(cx, cradle_y + 8)
+        context.line_to(cx, cy + 9)
+        context.stroke()
+        context.move_to(cx - 5, cy + 9)
+        context.line_to(cx + 5, cy + 9)
+        context.stroke()
+
+    def _draw_transcribing(self, context, cx, cy, phase):
+        context.set_line_cap(1)
+        context.set_line_width(3.5)
+        for dx, offset, amplitude in self.BARS:
+            level = (0.5 + 0.5 * math.sin(math.tau * phase + offset)) ** 1.6
+            height = 7 + 12 * amplitude * level
+            context.set_source_rgba(*self.BAR_COLOR, 0.95)
+            context.move_to(cx + dx, cy - height / 2)
+            context.line_to(cx + dx, cy + height / 2)
+            context.stroke()
+
+    def _draw_badge(self, context, color, glyph, progress=1, ring=True):
+        cx = self.WIDTH / 2
+        cy = self.HEIGHT / 2
+        fade = min(1, progress * 3)
+        context.save()
+        context.translate(cx, cy)
+        pop = ease_out_back(progress)
+        context.scale(pop, pop)
+        context.translate(-cx, -cy)
+        if ring:
+            context.set_source_rgba(*color, 0.16 * fade)
+            context.arc(cx, cy, 14, 0, math.tau)
+            context.fill()
+            context.set_source_rgba(*color, 0.92 * fade)
+            context.set_line_width(2)
+            context.arc(cx, cy, 14, 0, math.tau)
+            context.stroke()
+        glyph(context, cx, cy, fade)
+        context.restore()
+
+    def _draw_check(self, context, cx, cy, alpha=1):
+        context.set_source_rgba(*self.COPIED_COLOR, alpha)
+        context.set_line_width(3)
+        context.set_line_cap(1)
+        context.set_line_join(1)
+        context.move_to(cx - 6, cy + 0.5)
+        context.line_to(cx - 1.5, cy + 5)
+        context.line_to(cx + 6.5, cy - 5)
+        context.stroke()
+
+    def _draw_alert(self, context, cx, cy, alpha=1):
+        context.set_source_rgba(*self.ALERT_COLOR, alpha)
+        context.set_line_width(3)
+        context.set_line_cap(1)
+        context.move_to(cx, cy - 7)
+        context.line_to(cx, cy + 2)
+        context.stroke()
+        context.arc(cx, cy + 6.5, 1.7, 0, math.tau)
+        context.fill()
+
+    def _draw_phone_off(self, context, cx, cy, alpha=1):
+        # large slashed phone, no enclosing ring so it stays legible at pill size
+        context.set_source_rgba(*self.ALERT_COLOR, alpha)
+        context.set_line_width(2.5)
+        context.set_line_cap(1)
+        self._rounded_rect(context, cx - 8, cy - 11, cx + 2, cy + 11, 3)
+        context.stroke()
+        # dark underlay cuts the slash cleanly through the phone outline
+        context.set_source_rgba(0.094, 0.094, 0.106, alpha)
+        context.set_line_width(6.5)
+        context.move_to(cx - 11, cy - 11)
+        context.line_to(cx + 9, cy + 9)
+        context.stroke()
+        context.set_source_rgba(*self.ALERT_COLOR, alpha)
+        context.set_line_width(3.5)
+        context.move_to(cx - 11, cy - 11)
+        context.line_to(cx + 9, cy + 9)
+        context.stroke()
+
+    @staticmethod
+    def _rounded_rect(context, x0, y0, x1, y1, radius):
+        context.new_sub_path()
+        context.arc(x1 - radius, y0 + radius, radius, -math.pi / 2, 0)
+        context.arc(x1 - radius, y1 - radius, radius, 0, math.pi / 2)
+        context.arc(x0 + radius, y1 - radius, radius, math.pi / 2, math.pi)
+        context.arc(x0 + radius, y0 + radius, radius, math.pi, 3 * math.pi / 2)
+        context.close_path()
 
 
 class Overlay:
@@ -223,12 +324,8 @@ class Overlay:
         self.symbol.update(state, color)
         self.text.set_text(text)
         style = self.content.get_style_context()
-        if text:
-            style.add_class("with-background")
-            self.content.set_border_width(14)
-        else:
-            style.remove_class("with-background")
-            self.content.set_border_width(8)
+        style.add_class("with-background")
+        self.content.set_border_width(14 if text else 9)
         if self.hide_timeout:
             GLib.source_remove(self.hide_timeout)
             self.hide_timeout = 0
@@ -249,12 +346,12 @@ class Overlay:
             return GLib.SOURCE_REMOVE
         self.content.set_opacity(0)
         self._set_vertical_offset(18)
-        self._animate(220, self._show_frame)
+        self._animate(260, self._show_frame)
         return GLib.SOURCE_REMOVE
 
     def _show_frame(self, progress):
-        eased = 1 - (1 - progress) ** 3
-        self.content.set_opacity(eased)
+        eased = ease_out_back(progress)
+        self.content.set_opacity(min(1, eased))
         self._set_vertical_offset(round(18 * (1 - eased)))
 
     def _begin_hide(self):
@@ -299,7 +396,7 @@ class Overlay:
             self.symbol.update(self.current_state, self.current_color, phase)
             return GLib.SOURCE_CONTINUE
 
-        self.pulse_timeout = GLib.timeout_add(42, pulse)
+        self.pulse_timeout = GLib.timeout_add(33, pulse)
 
     def _stop_pulsing(self):
         if self.pulse_timeout:
@@ -354,13 +451,6 @@ def emit(state):
         ],
         check=True,
     )
-
-
-def color_components(value):
-    red = int(value[1:3], 16) / 255
-    green = int(value[3:5], 16) / 255
-    blue = int(value[5:7], 16) / 255
-    return red, green, blue, 1
 
 
 def main():
