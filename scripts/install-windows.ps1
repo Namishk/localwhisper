@@ -98,7 +98,7 @@ Write-Step 'Checking dependencies'
 # A previous run may have installed tools this session cannot see yet.
 Update-EnvironmentFromRegistry
 if (-not (Test-VsCppToolchain)) {
-    Install-WingetPackage 'Microsoft.VisualStudio.2022BuildTools' `
+    Install-WingetPackage 'Microsoft.VisualStudio.2022.BuildTools' `
         '--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'
     # Stop here rather than letting CMake fall back to a generator with no
     # compiler and fail several minutes later with an unrelated message.
