@@ -46,14 +46,14 @@ func serve(addr string) {
 		}
 	}()
 
-	ebiten.SetWindowTitle(overlay.WindowTitle)
+	ebiten.SetWindowTitle(windowTitle)
 	ebiten.SetWindowDecorated(false)
 	ebiten.SetWindowFloating(true)
 	ebiten.SetWindowResizable(false)
 	ebiten.SetInitFocused(false)
 	ebiten.SetScreenTransparent(true)
-	overlay.EnableClickThrough(overlay.WindowTitle)
-	if err := ebiten.RunGame(overlay.NewGame(store)); err != nil {
+	EnableClickThrough(windowTitle)
+	if err := ebiten.RunGame(NewGame(store)); err != nil {
 		slog.Error("overlay window", "error", err)
 		os.Exit(1)
 	}

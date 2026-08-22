@@ -24,23 +24,18 @@ function Need-Command([string]$name) {
     }
 }
 
-foreach ($command in @('go', 'git', 'cmake')) {
+foreach ($command in @('go', 'git', 'cmake', 'glslc')) {
     Need-Command $command
 }
 
 New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 
-if (-not (Test-Path $receiverExe)) {
-    Push-Location (Join-Path $repoRoot 'receiver')
-    go build -o localwhisper.exe ./cmd/localwhisper
-    Pop-Location
-}
-
-if (-not (Test-Path $overlayExe)) {
-    Push-Location (Join-Path $repoRoot 'receiver')
-    go build -o localwhisper-overlay.exe ./cmd/localwhisper-overlay
-    Pop-Location
-}
+Push-Location (Join-Path $repoRoot 'receiver')
+go build -o localwhisper.exe ./cmd/localwhisper
+if ($LASTEXITCODE -ne 0) { Pop-Location; Write-Error 'receiver build failed' }
+go build -o localwhisper-overlay.exe ./cmd/localwhisper-overlay
+if ($LASTEXITCODE -ne 0) { Pop-Location; Write-Error 'overlay build failed' }
+Pop-Location
 
 if (-not (Test-Path (Join-Path $whisperDir '.git'))) {
     git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git $whisperDir

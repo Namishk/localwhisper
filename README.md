@@ -44,7 +44,7 @@ The token is private. The configuration file is mode `0600`; do not commit, shar
 
 ## Install on Windows
 
-On Windows the receiver copies the transcription to the clipboard via `clip.exe`, and a Go/Ebiten status pill overlay (transparent, click-through, bottom-center) mirrors the GTK overlay from Fedora. You need Windows 10 or 11 with a Vulkan-capable GPU, plus [Go](https://go.dev/dl/), [Git](https://git-scm.com/download/win), [CMake](https://cmake.org/download/), and Visual Studio Build Tools (C++ workload) on PATH.
+On Windows the receiver copies the transcription to the clipboard via `clip.exe`, and a Go/Ebiten status pill overlay (transparent, click-through, bottom-center) mirrors the GTK overlay from Fedora. You need Windows 10 or 11 with a Vulkan-capable GPU, plus [Go](https://go.dev/dl/), [Git](https://git-scm.com/download/win), [CMake](https://cmake.org/download/), the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (provides `glslc` for building whisper.cpp shaders), and Visual Studio Build Tools (C++ workload) on PATH.
 
 Clone this repository and run the installer in PowerShell:
 

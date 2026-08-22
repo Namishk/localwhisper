@@ -24,6 +24,9 @@ var states = map[string]Meta{
 	"disconnected": {Text: "Mobile not connected", HideAfter: 3500 * time.Millisecond},
 }
 
+// Label returns the text caption shown next to a state's glyph.
+func Label(name string) string { return states[name].Text }
+
 // Valid reports whether name is a renderable overlay state.
 func Valid(name string) bool {
 	_, ok := states[name]

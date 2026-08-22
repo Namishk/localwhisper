@@ -1,4 +1,4 @@
-package overlay
+package main
 
 import (
 	"image"
@@ -10,8 +10,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"golang.org/x/image/font"
+
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
+	"localwhisper/receiver/internal/overlay"
 )
 
 // The renderer draws a 52x44 unit glyph space scaled by S pixels per unit.
@@ -19,7 +21,7 @@ import (
 // C1 copied, F3 failed, D1 disconnected.
 const (
 	S           = 2.0
-	WindowTitle = "LocalWhisperOverlay"
+	windowTitle = "LocalWhisperOverlay"
 	cycle       = 900 * time.Millisecond // shared loop for recording/transcribing
 )
 
@@ -106,7 +108,7 @@ func strokePts(dst *ebiten.Image, pts []ptF, width float32, clr color.Color) {
 
 // Game renders the status pill inside an undecorated transparent window.
 type Game struct {
-	store *Store
+	store *overlay.Store
 	texts map[string]*ebiten.Image
 
 	tick       int
@@ -114,18 +116,18 @@ type Game struct {
 	w, h       int
 }
 
-func NewGame(store *Store) *Game {
+func NewGame(store *overlay.Store) *Game {
 	return &Game{store: store, texts: map[string]*ebiten.Image{}, w: 160, h: 124}
 }
 
 // layoutFor sizes the window to the pill contents.
 func layoutFor(state string) (w, h int, glyphX, glyphY float32, text string) {
-	meta := states[state]
-	if meta.Text == "" {
+	text = overlay.Label(state)
+	if text == "" {
 		return int((52 + 28) * S), int((44 + 18) * S), 14 * S, 9 * S, ""
 	}
-	totalUnits := 52 + 10 + len(meta.Text)*7 + 36
-	return int(totalUnits * S), int((44 + 28) * S), 18 * S, 14 * S, meta.Text
+	totalUnits := 52 + 10 + len(text)*7 + 36
+	return int(totalUnits * S), int((44 + 28) * S), 18 * S, 14 * S, text
 }
 
 func (g *Game) Update() error {
