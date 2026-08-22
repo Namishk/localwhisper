@@ -8,4 +8,9 @@ Get-Content $envFile | ForEach-Object {
     }
 }
 Set-Location $dataDir
+
+# Overlay serve owns the status pill window; receiver posts states to it.
+Start-Process -FilePath (Join-Path $dataDir 'localwhisper-overlay.exe') `
+    -ArgumentList 'serve' -WindowStyle Hidden
+Start-Sleep -Milliseconds 500
 & (Join-Path $dataDir 'localwhisper.exe')

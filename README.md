@@ -44,7 +44,7 @@ The token is private. The configuration file is mode `0600`; do not commit, shar
 
 ## Install on Windows
 
-Windows support has no status overlay; the transcription lands on the clipboard via `clip.exe`. You need Windows 10 or 11 with a Vulkan-capable GPU, plus [Go](https://go.dev/dl/), [Git](https://git-scm.com/download/win), [CMake](https://cmake.org/download/), and Visual Studio Build Tools (C++ workload) on PATH.
+On Windows the receiver copies the transcription to the clipboard via `clip.exe`, and a Go/Ebiten status pill overlay (transparent, click-through, bottom-center) mirrors the GTK overlay from Fedora. You need Windows 10 or 11 with a Vulkan-capable GPU, plus [Go](https://go.dev/dl/), [Git](https://git-scm.com/download/win), [CMake](https://cmake.org/download/), and Visual Studio Build Tools (C++ workload) on PATH.
 
 Clone this repository and run the installer in PowerShell:
 
@@ -54,7 +54,9 @@ cd localwhisper
 powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1
 ```
 
-The installer builds the receiver, clones and builds `whisper.cpp` with Vulkan under `%LOCALAPPDATA%\localwhisper\whisper.cpp`, downloads the default model, creates a random pairing token in `%LOCALAPPDATA%\localwhisper\receiver.env`, and registers a logon scheduled task that starts the receiver. Pass `-NoAutostart` to skip the scheduled task.
+The installer builds the receiver and the status overlay (`localwhisper-overlay.exe`, rendered with Ebiten), clones and builds `whisper.cpp` with Vulkan under `%LOCALAPPDATA%\localwhisper\whisper.cpp`, downloads the default model, creates a random pairing token in `%LOCALAPPDATA%\localwhisper\receiver.env`, and registers a logon scheduled task that starts both the overlay and the receiver. Pass `-NoAutostart` to skip the scheduled task.
+
+If you already installed an earlier build, delete `%LOCALAPPDATA%\localwhisper\receiver.env` so the installer recreates it with the `LOCALWHISPER_INDICATOR` entry the receiver needs to drive the overlay, then rerun the installer.
 
 It prints the laptop IP and pairing token. Print them again at any time with:
 

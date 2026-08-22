@@ -16,6 +16,7 @@ $modelName = 'large-v3-turbo-q5_0'
 $whisperDir = Join-Path $dataDir 'whisper.cpp'
 $modelPath = Join-Path $whisperDir "models\ggml-$modelName.bin"
 $receiverExe = Join-Path $repoRoot 'receiver\localwhisper.exe'
+$overlayExe = Join-Path $repoRoot 'receiver\localwhisper-overlay.exe'
 
 function Need-Command([string]$name) {
     if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
@@ -32,6 +33,12 @@ New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 if (-not (Test-Path $receiverExe)) {
     Push-Location (Join-Path $repoRoot 'receiver')
     go build -o localwhisper.exe ./cmd/localwhisper
+    Pop-Location
+}
+
+if (-not (Test-Path $overlayExe)) {
+    Push-Location (Join-Path $repoRoot 'receiver')
+    go build -o localwhisper-overlay.exe ./cmd/localwhisper-overlay
     Pop-Location
 }
 
@@ -61,11 +68,13 @@ WHISPER_MODEL=$modelPath
 WHISPER_THREADS=8
 WS_ADDR=:8765
 CONTROL_ADDR=127.0.0.1:8766
+LOCALWHISPER_INDICATOR=$dataDir\localwhisper-overlay.exe
 LOCALWHISPER_TOKEN=$token
 "@ | Set-Content -NoNewline -Encoding ascii $envFile
 }
 
 Copy-Item $receiverExe (Join-Path $dataDir 'localwhisper.exe') -Force
+Copy-Item $overlayExe (Join-Path $dataDir 'localwhisper-overlay.exe') -Force
 Copy-Item (Join-Path $repoRoot 'scripts\start-windows.ps1') (Join-Path $dataDir 'start-localwhisper.ps1') -Force
 
 if (-not $NoAutostart) {

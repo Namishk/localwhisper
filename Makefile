@@ -1,7 +1,7 @@
 .PHONY: build test vet run status toggle android release install install-desktop install-overlay
 
 build:
-	cd receiver && go build -o localwhisper ./cmd/localwhisper && go build -o localwhisper-integration ./cmd/localwhisper-integration
+	cd receiver && go build -o localwhisper ./cmd/localwhisper && go build -o localwhisper-integration ./cmd/localwhisper-integration && go build -o localwhisper-overlay ./cmd/localwhisper-overlay
 
 test:
 	cd receiver && go test ./...
